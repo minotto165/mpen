@@ -1,0 +1,11 @@
+[Unit]
+Description=mpen: ペン使用中だけ指タッチを止める番人
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/mpen
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

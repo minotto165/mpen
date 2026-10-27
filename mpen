@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""mpen - ペンがタッチとしてしか来ない機種向けの自動タッチ無視番人.
+
+例: MateBook E + M-Pencil。ペン先がスクリーンのタッチとしてしか
+OSに届かず、近づき信号も筆圧も無い型向け。ペンが画面に触れて
+いる間だけ指タッチ側を grab して止める。触れたかどうかだけで動く。
+"""
+
+import argparse
+import glob
+import sys
+
+try:
+    from evdev import InputDevice, ecodes
+except ImportError:
+    sys.exit("python-evdev が要るよ: sudo pacman -Sy python-evdev")
+
+BTN_TOUCH = ecodes.BTN_TOUCH
+MT_TRACKING_ID = ecodes.ABS_MT_TRACKING_ID
+TOOL_CODES = {
+    ecodes.BTN_TOOL_PEN,
+    ecodes.BTN_TOOL_RUBBER,
+    ecodes.BTN_TOOL_BRUSH,
+    ecodes.BTN_TOOL_PENCIL,
+}
+
+
+def find_device(match, exclude=None):
+    """名前の一部で入力機器を探す。/dev/input/eventN ならそのまま開く。"""
+    if match.startswith("/dev/input/"):
+        return InputDevice(match)
+    for path in sorted(glob.glob("/dev/input/event*")):
+        try:
+            dev = InputDevice(path)
+        except OSError:
+            continue
+        if match in dev.name and (exclude is None or exclude not in dev.name):
+            return dev
+    return None
+
+
+def main():
+    ap = argparse.ArgumentParser(description="ペン使用中だけ指タッチを止める番人")
+    ap.add_argument("--pen", default="Stylus",
+                    help="ペン側の名前の一部か event パス (default: %(default)s)")
+    ap.add_argument("--touch", default="12d1:10b8",
+                    help="指タッチ側の名前の一部か event パス (default: %(default)s)")
+    ap.add_argument("--touch-exclude", default="Stylus",
+                    help="指タッチ側から除く名前 (default: %(default)s)")
+    ap.add_argument("--list", action="store_true", help="機器一覧だけ出して終わる")
+    args = ap.parse_args()
+
+    if args.list:
+        for path in sorted(glob.glob("/dev/input/event*")):
+            try:
+                print(path, InputDevice(path).name)
+            except OSError:
+                pass
+        return 0
+
+    pen = find_device(args.pen)
+    if pen is None:
+        print(f"ペンが見つからないよ: {args.pen}", file=sys.stderr)
+        return 1
+    touch = find_device(args.touch, args.touch_exclude)
+    if touch is None:
+        print(f"指タッチが見つからないよ: {args.touch}", file=sys.stderr)
+        return 1
+    print(f"pen: {pen.path} {pen.name}", flush=True)
+    print(f"touch: {touch.path} {touch.name}", flush=True)
+
+    slots = set()
+    tool_near = False
+    grabbed = False
+
+    def update():
+        nonlocal grabbed
+        want = bool(slots) or tool_near
+        if want and not grabbed:
+            touch.grab()
+            grabbed = True
+            print("指止めたよ", flush=True)
+        elif not want and grabbed:
+            touch.ungrab()
+            grabbed = False
+            print("指戻したよ", flush=True)
+
+    try:
+        for ev in pen.read_loop():
+            if ev.type == ecodes.EV_ABS and ev.code == MT_TRACKING_ID:
+                # 単筆前提: 触れたか離れたかだけ見る
+                if ev.value == -1:
+                    slots.clear()
+                else:
+                    slots.add(ev.value)
+                update()
+            elif ev.type == ecodes.EV_KEY and ev.code == BTN_TOUCH:
+                if ev.value == 1:
+                    slots.add("btn")
+                else:
+                    slots.discard("btn")
+                update()
+            elif ev.type == ecodes.EV_KEY and ev.code in TOOL_CODES:
+                tool_near = (ev.value == 1)
+                update()
+    except OSError as e:
+        print(f"機器が切れたよ: {e}", file=sys.stderr)
+        return 2
+    finally:
+        if grabbed:
+            try:
+                touch.ungrab()
+            except OSError:
+                pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
