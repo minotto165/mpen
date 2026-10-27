@@ -27,16 +27,16 @@ systemctl --user enable --now mpen
 ## 使い方
 
 ペンが画面に触れている間だけ指タッチが止まるよ。ペンを離すと戻るよ。
-記録は `journalctl --user -u mpen` で見れるよ。
+記録は `journalctl --user -u mpen` で見られるよ。
 
-機器名が違う時は引数で変えるよ。名前はこれで調べるよ：
+機器名が違う時は引数で変えるよ。名前はこう調べるよ
 
 ```bash
 mpen --list
 mpen --pen "Stylus" --touch "12d1:10b8" --touch-exclude "Stylus"
 ```
 
-決まったら service の ExecStart に足すよ：
+決まったら service の ExecStart に足すよ
 
 ```
 ExecStart=%h/.local/bin/mpen --pen "Stylus" --touch "12d1:10b8"
@@ -50,6 +50,6 @@ systemctl --user disable --now mpen
 
 ## 注意
 
-- Wayland でも X11 でも動くよ (核の下で止めるから)
+- Wayland でも X11 でも動くよ (表示の仕組みによらないから)
 - ペンのボタン等 Bluetooth 側は別扱いだよ
-- 同時に2本指で触る取り回しは想定外だよ
+- 同時に2本指で触る取り回しには対応してないよ
