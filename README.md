@@ -1,47 +1,47 @@
 # mpen
 
-ペンがタッチとしてしか OS に届かない機種で、ペン使用中に指タッチを無効にします。
-例: MateBook E + M-Pencil。
+Disables finger touch while the pen is in use, for devices where the pen only reaches the OS as touch.
+Example: MateBook E + M-Pencil.
 
-## 条件
+## Requirements
 
-- `libinput list-devices` でペンが `cap:t` と出る
-- 近づき信号も筆圧も OS に届かない
-- 指タッチとペンが別の機器として見える
+- The pen shows up as `cap:t` in `libinput list-devices`
+- No proximity or pressure events reach the OS
+- Finger touch and pen appear as separate input devices
 
-近づき信号があるペンは OS 側で無視されるため不要です。
+Pens with proximity are already ignored by the OS, so this tool is not needed for them.
 
-## インストール
+## Install
 
 ```bash
 sudo pacman -Sy python-evdev
 sudo usermod -aG input $USER
-# 一度入り直します
+# Log back in (to apply the group)
 mkdir -p ~/.local/bin ~/.config/systemd/user
 cp mpen ~/.local/bin && chmod +x ~/.local/bin/mpen
 cp mpen.service ~/.config/systemd/user/
 systemctl --user enable --now mpen
 ```
 
-## 使い方
+## Usage
 
-ペンが画面に触れている間だけ指タッチが無効になります。
-記録は `journalctl --user -u mpen` で確認できます。
-機器名が異なる場合は引数で指定し、service の ExecStart に追記します。
+Finger touch is disabled only while the pen touches the screen.
+Check the log with `journalctl --user -u mpen`.
+For different device names, pass arguments and append them to ExecStart in the service file.
 
 ```bash
 mpen --list
 mpen --pen "Stylus" --touch "12d1:10b8" --touch-exclude "Stylus"
 ```
 
-## 削除
+## Removal
 
 ```bash
 systemctl --user disable --now mpen
 ```
 
-## 注意
+## Notes
 
-- Wayland と X11 のどちらでも動作します
-- ペンのボタンなど Bluetooth 側は対象外です
-- 2本指での同時操作には対応していません
+- Works on both Wayland and X11
+- Pen buttons and other Bluetooth features are out of scope
+- Two-finger gestures while the pen is down are not supported

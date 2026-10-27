@@ -1,5 +1,5 @@
 [Unit]
-Description=mpen: ペン使用中だけ指タッチを無効にします
+Description=mpen: disable finger touch while the pen is in use
 After=graphical-session.target
 
 [Service]

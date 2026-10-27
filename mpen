@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""mpen - ペンがタッチとしてしか OS に届かない機種向けに、
-ペン使用中だけ指タッチを無効にする。
+"""mpen disables finger touch while the pen is in use, for devices
+where the pen only reaches the OS as touch.
 
-例: MateBook E + M-Pencil。ペン先がスクリーンのタッチとしてしか
-OSに届かず、近づき信号も筆圧も無い型向け。ペンが画面に触れて
-いる間だけ指タッチ側を grab して止める。触れたかどうかだけで動く。
+Example: MateBook E + M-Pencil. The pen tip is only reported as a
+screen touch, with no proximity or pressure events. While the pen
+touches the screen, the finger-touch device is grabbed. Contact alone
+drives it.
 """
 
 import argparse
@@ -14,7 +15,7 @@ import sys
 try:
     from evdev import InputDevice, ecodes
 except ImportError:
-    sys.exit("python-evdev が要るよ: sudo pacman -Sy python-evdev")
+    sys.exit("python-evdev is required: sudo pacman -Sy python-evdev")
 
 BTN_TOUCH = ecodes.BTN_TOUCH
 MT_TRACKING_ID = ecodes.ABS_MT_TRACKING_ID
@@ -27,7 +28,7 @@ TOOL_CODES = {
 
 
 def find_device(match, exclude=None):
-    """名前の一部で入力機器を探す。/dev/input/eventN ならそのまま開く。"""
+    """Find an input device by part of its name. A /dev/input/eventN path is opened directly."""
     if match.startswith("/dev/input/"):
         return InputDevice(match)
     for path in sorted(glob.glob("/dev/input/event*")):
@@ -41,14 +42,14 @@ def find_device(match, exclude=None):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="ペン使用中だけ指タッチを止める番人")
+    ap = argparse.ArgumentParser(description="Disable finger touch while the pen is in use")
     ap.add_argument("--pen", default="Stylus",
-                    help="ペン側の名前の一部か event パス (default: %(default)s)")
+                    help="part of the pen device name or an event path (default: %(default)s)")
     ap.add_argument("--touch", default="12d1:10b8",
-                    help="指タッチ側の名前の一部か event パス (default: %(default)s)")
+                    help="part of the finger-touch device name or an event path (default: %(default)s)")
     ap.add_argument("--touch-exclude", default="Stylus",
-                    help="指タッチ側から除く名前 (default: %(default)s)")
-    ap.add_argument("--list", action="store_true", help="機器一覧だけ出して終わる")
+                    help="name to exclude from the finger-touch match (default: %(default)s)")
+    ap.add_argument("--list", action="store_true", help="list devices and exit")
     args = ap.parse_args()
 
     if args.list:
@@ -61,11 +62,11 @@ def main():
 
     pen = find_device(args.pen)
     if pen is None:
-        print(f"ペンが見つからないよ: {args.pen}", file=sys.stderr)
+        print(f"Pen not found: {args.pen}", file=sys.stderr)
         return 1
     touch = find_device(args.touch, args.touch_exclude)
     if touch is None:
-        print(f"指タッチが見つからないよ: {args.touch}", file=sys.stderr)
+        print(f"Touch device not found: {args.touch}", file=sys.stderr)
         return 1
     print(f"pen: {pen.path} {pen.name}", flush=True)
     print(f"touch: {touch.path} {touch.name}", flush=True)
@@ -80,16 +81,16 @@ def main():
         if want and not grabbed:
             touch.grab()
             grabbed = True
-            print("指止めたよ", flush=True)
+            print("Touch disabled", flush=True)
         elif not want and grabbed:
             touch.ungrab()
             grabbed = False
-            print("指戻したよ", flush=True)
+            print("Touch enabled", flush=True)
 
     try:
         for ev in pen.read_loop():
             if ev.type == ecodes.EV_ABS and ev.code == MT_TRACKING_ID:
-                # 単筆前提: 触れたか離れたかだけ見る
+                # Single-pen assumption: only track touched vs released
                 if ev.value == -1:
                     slots.clear()
                 else:
@@ -105,7 +106,7 @@ def main():
                 tool_near = (ev.value == 1)
                 update()
     except OSError as e:
-        print(f"機器が切れたよ: {e}", file=sys.stderr)
+        print(f"Device disconnected: {e}", file=sys.stderr)
         return 2
     finally:
         if grabbed:
