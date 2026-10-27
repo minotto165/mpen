@@ -1,5 +1,5 @@
 [Unit]
-Description=mpen: ペン使用中だけ指タッチを止める番人
+Description=mpen: ペン使用中だけ指タッチを無効にします
 After=graphical-session.target
 
 [Service]

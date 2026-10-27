@@ -1,22 +1,22 @@
 # mpen
 
-ペンがタッチとしてしか OS に届かない機種向けの、指タッチ自動無視番人。
+ペンがタッチとしてしか OS に届かない機種で、指タッチを自動で無効にするツールです。
 例: MateBook E + M-Pencil。
 
-## 向く機種
+## 対応機種
 
-- ペン先が画面のタッチとして来る (`libinput list-devices` でペンが `cap:t`)
-- 近づき信号も筆圧も OS に来ない
+- ペン先が画面のタッチとして認識される (`libinput list-devices` でペンが `cap:t` と出ます)
+- 近づき信号も筆圧も OS に届かない
 - 指タッチとペンが別の入力機器として見える
 
-普通の Wacom 等 (近づき信号あり) は OS 側で勝手に無視するから要らないよ。
+近づき信号がある通常の Wacom ペンなどは OS 側で自動で無視されるため、このツールは不要です。
 
-## 入れ方
+## インストール
 
 ```bash
 sudo pacman -Sy python-evdev
 sudo usermod -aG input $USER
-# 入り直す (グループ反映のため)
+# 一度入り直します (グループの反映のため)
 mkdir -p ~/.local/bin ~/.config/systemd/user
 cp mpen ~/.local/bin/mpen
 chmod +x ~/.local/bin/mpen
@@ -26,23 +26,23 @@ systemctl --user enable --now mpen
 
 ## 使い方
 
-ペンが画面に触れている間だけ指タッチが止まるよ。ペンを離すと戻るよ。
-記録は `journalctl --user -u mpen` で見られるよ。
+ペンが画面に触れている間、指タッチが無効になります。ペンを離すと元に戻ります。
+動作の記録は `journalctl --user -u mpen` で確認できます。
 
-機器名が違う時は引数で変えるよ。名前はこう調べるよ
+機器名が異なる場合は引数で指定します。名前は次のコマンドで調べられます。
 
 ```bash
 mpen --list
 mpen --pen "Stylus" --touch "12d1:10b8" --touch-exclude "Stylus"
 ```
 
-決まったら service の ExecStart に足すよ
+引数が決まったら service ファイルの ExecStart に追記します。
 
 ```
 ExecStart=%h/.local/bin/mpen --pen "Stylus" --touch "12d1:10b8"
 ```
 
-## やめ方
+## 削除
 
 ```bash
 systemctl --user disable --now mpen
@@ -50,6 +50,6 @@ systemctl --user disable --now mpen
 
 ## 注意
 
-- Wayland でも X11 でも動くよ (表示の仕組みによらないから)
-- ペンのボタン等 Bluetooth 側は別扱いだよ
-- 同時に2本指で触る取り回しには対応してないよ
+- Wayland と X11 のどちらでも動作します (表示の仕組みに依存しないため)
+- ペンのボタンなど Bluetooth 側の機能は対象外です
+- 2本指での同時操作には対応していません
